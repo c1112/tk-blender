@@ -318,19 +318,19 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         runs the publish for all alembic output.
         """
         try:
-            context = get_view3d_operator_context()
+            override = get_view3d_operator_context()
 
-            bpy.ops.wm.alembic_export(
-                context,
-                filepath=publish_path,
-                selected=True,
-                visible_objects_only=False,
-                uvs=True,
-                vcolors=True,
-                face_sets=True,
-                start=start_frame,
-                end=end_frame,
-            )
+            with bpy.context.temp_override(**override):
+                bpy.ops.wm.alembic_export(
+                    filepath=publish_path,
+                    selected=True,
+                    visible_objects_only=False,
+                    uvs=True,
+                    vcolors=True,
+                    face_sets=True,
+                    start=start_frame,
+                    end=end_frame,
+                )
 
         except Exception as e:
             error_msg = "Failed to export Geometry: %s" % e

@@ -17,6 +17,8 @@ Hook that loads defines all the available actions, broken down by publish type.
 
 import os
 import contextlib
+import glob
+import re
 
 import bpy
 import sgtk
@@ -213,6 +215,17 @@ class BlenderActions(HookBaseClass):
                 }
             )
 
+        if "asMovieClip" in actions:
+            action_instances.append(
+                {
+                    "name": "asMovieClip",
+                    "params": None,
+                    "caption": "As Movie Clip and Set Scene",
+                    "description": (
+                        "This will create a new movie clip and also configure first frame, last frame, and render resolution"
+                    ),
+                }
+            )
         return action_instances
 
     def execute_multiple_actions(self, actions):
@@ -298,6 +311,9 @@ class BlenderActions(HookBaseClass):
         if name == "asSequencerSound":
             self._create_sequencer_sound(path, sg_publish_data)
 
+        if name == "asMovieClip":
+            self._create_movie_clip(path, sg_publish_data)
+
     ###########################################################################
     # helper methods which can be subclassed in custom hooks to fine tune the
     # behaviour of things
@@ -338,6 +354,40 @@ class BlenderActions(HookBaseClass):
                     raise TankError("'{0}' in '{1}' is empty or not present.".format(LINK_LIST_KEY_NAME, path))
 
                 return list(set(sgtk_link_collection))
+
+    def _get_first_and_last_frame(self, pattern):
+        # Use regex to find the digit format in the pattern (e.g., %04d, %05d)
+        match = re.search(r'%0(\d+)d', pattern)
+        if not match:
+            raise ValueError("Pattern must include a valid digit format like %04d or %05d.")
+        
+        # Extract the number of digits
+        num_digits = int(match.group(1))
+        
+        # Construct the appropriate glob pattern based on the number of digits
+        digit_pattern = '[0-9]' * num_digits
+        glob_pattern = pattern.replace(f'%0{num_digits}d', digit_pattern)
+        
+        # Use glob to find all files matching the pattern
+        files = glob.glob(glob_pattern)
+        
+        if not files:
+            raise ValueError("No files found matching the pattern.")
+        
+        # Sort the files
+        files_sorted = sorted(files)
+        
+        # Find the exact position of the digit sequence in the pattern
+        digit_position = pattern.find(f'%0{num_digits}d')
+        
+        # Extract the frame numbers from the file names based on their position
+        first_frame = files_sorted[0]
+        last_frame = files_sorted[-1]
+        
+        first_frame_number = int(first_frame[digit_position:digit_position + num_digits])
+        last_frame_number = int(last_frame[digit_position:digit_position + num_digits])
+        
+        return first_frame, first_frame_number, last_frame_number
 
     def _create_link(self, path, sg_publish_data):
         """
@@ -397,7 +447,8 @@ class BlenderActions(HookBaseClass):
         context = get_view3d_operator_context()
 
         if extension_name in ("abc",):
-            bpy.ops.wm.alembic_import(context, filepath=path, as_background_job=False, set_frame_range=False)
+            with bpy.context.temp_override(**context):
+                bpy.ops.wm.alembic_import(filepath=path, as_background_job=False, set_frame_range=False)
 
         elif extension_name in ("dae",):
             bpy.ops.wm.collada_import(context, filepath=path, as_background_job=False)
@@ -545,3 +596,29 @@ class BlenderActions(HookBaseClass):
             channel=3,
             frame_start=bpy.context.scene.frame_current,
         )
+
+    def _create_movie_clip(self, path, sg_publish_data):
+        #convert sg stored value into blender usable
+        first_frame_path, first_frame, last_frame = self._get_first_and_last_frame(path)
+
+        #load plate
+        plate = bpy.data.movieclips.load(first_frame_path)
+        plate.name = sg_publish_data['name']
+
+        #set scene width and height
+        bpy.context.scene.render.resolution_x = plate.size[0]
+        bpy.context.scene.render.resolution_y = plate.size[1]
+
+        #set scene frames
+        bpy.context.scene.frame_start = first_frame
+        bpy.context.scene.frame_end = last_frame
+        bpy.context.scene.frame_current = first_frame
+
+        #set start frame of the clip
+        plate.frame_start = first_frame
+
+        #use proxy
+        plate.use_proxy = True
+
+        #set as active clip
+        bpy.context.scene.active_clip = plate
