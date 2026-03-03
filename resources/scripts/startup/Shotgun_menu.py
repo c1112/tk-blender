@@ -90,56 +90,15 @@ class ShotgunConsoleLog(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# based on
-# https://github.com/vincentgires/blender-scripts/blob/master/scripts/addons/qtutils/core.py
-class QtWindowEventLoop(bpy.types.Operator):
-    """
-    Integration of qt event loop within Blender
-    """
+_qt_app = None
 
-    bl_idname = "screen.qt_event_loop"
-    bl_label = "Qt Event Loop"
 
-    def __init__(self):
-        self._app = None
-        self._timer = None
-        self._event_loop = None
-
-    def processEvents(self):
-        self._event_loop.processEvents()
-        self._app.sendPostedEvents(None, 0)
-
-    def modal(self, context, event):
-        if event.type == "TIMER":
-            if self._app and not self.anyQtWindowsAreOpen():
-                self.cancel(context)
-                return {"FINISHED"}
-
-            self.processEvents()
-        return {"PASS_THROUGH"}
-
-    def anyQtWindowsAreOpen(self):
-        return any(w.isVisible() for w in QtWidgets.QApplication.topLevelWidgets())
-
-    def execute(self, context):
-        # create a QApplication if already does not exists
-        self._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
-            sys.argv
-        )
-        self._event_loop = QtCore.QEventLoop()
-
-        # run modal
-        wm = context.window_manager
-        # self._timer = wm.event_timer_add(1 / 120, window=context.window)
-        self._timer = wm.event_timer_add(0.001, window=context.window)
-        context.window_manager.modal_handler_add(self)
-
-        return {"RUNNING_MODAL"}
-
-    def cancel(self, context):
-        """Remove event timer when stopping the operator."""
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
+def _process_qt_events():
+    """Process Qt events via Blender's timer system."""
+    if _qt_app is not None:
+        _qt_app.processEvents()
+        _qt_app.sendPostedEvents(None, 0)
+    return 0.001
 
 
 class TOPBAR_MT_shotgun(Menu):
@@ -265,7 +224,10 @@ def boostrap():
 
 @persistent
 def startup(dummy):
-    bpy.ops.screen.qt_event_loop()
+    global _qt_app
+    _qt_app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    if not bpy.app.timers.is_registered(_process_qt_events):
+        bpy.app.timers.register(_process_qt_events, persistent=True)
     boostrap()
 
 @persistent
@@ -281,7 +243,6 @@ def register():
         load_factory_startup_post.append(error_importing_pyside2)
         return
 
-    bpy.utils.register_class(QtWindowEventLoop)
     TOPBAR_MT_help = bpy.types.TOPBAR_MT_help
     TOPBAR_MT_editor_menus = insert_main_menu(
         TOPBAR_MT_shotgun, before_menu_class=TOPBAR_MT_help
@@ -301,5 +262,8 @@ def unregister():
 
     if not PYSIDE_IMPORTED:
         return
+
+    if bpy.app.timers.is_registered(_process_qt_events):
+        bpy.app.timers.unregister(_process_qt_events)
 
     bpy.utils.unregister_class(TOPBAR_MT_shotgun)
