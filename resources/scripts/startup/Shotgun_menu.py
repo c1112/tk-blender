@@ -13,7 +13,7 @@
 
 import os
 import sys
-import imp
+import importlib.util
 import time
 import ast
 import inspect
@@ -51,21 +51,26 @@ bl_info = {
 }
 
 
-PYSIDE2_MISSING_MESSAGE = (
+PYSIDE_MISSING_MESSAGE = (
     "\n"
     + "-" * 80
-    + "\nCould not import PySide2 as a Python module. Shotgun menu will not be available."
+    + "\nCould not import PySide2 or PySide6 as a Python module. Shotgun menu will not be available."
     + "\n\nPlease check the engine documentation for more information:"
     + "\nhttps://github.com/diegogarciahuerta/tk-blender/edit/master/README.md\n"
     + "-" * 80
 )
 
 try:
-    from PySide2 import QtWidgets, QtCore
+    from PySide6 import QtWidgets, QtCore
 
-    PYSIDE2_IMPORTED = True
-except ModuleNotFoundError:
-    PYSIDE2_IMPORTED = False
+    PYSIDE_IMPORTED = True
+except ImportError:
+    try:
+        from PySide2 import QtWidgets, QtCore
+
+        PYSIDE_IMPORTED = True
+    except ImportError:
+        PYSIDE_IMPORTED = False
 
 
 class ShotgunConsoleLog(bpy.types.Operator):
@@ -85,56 +90,15 @@ class ShotgunConsoleLog(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# based on
-# https://github.com/vincentgires/blender-scripts/blob/master/scripts/addons/qtutils/core.py
-class QtWindowEventLoop(bpy.types.Operator):
-    """
-    Integration of qt event loop within Blender
-    """
+_qt_app = None
 
-    bl_idname = "screen.qt_event_loop"
-    bl_label = "Qt Event Loop"
 
-    def __init__(self):
-        self._app = None
-        self._timer = None
-        self._event_loop = None
-
-    def processEvents(self):
-        self._event_loop.processEvents()
-        self._app.sendPostedEvents(None, 0)
-
-    def modal(self, context, event):
-        if event.type == "TIMER":
-            if self._app and not self.anyQtWindowsAreOpen():
-                self.cancel(context)
-                return {"FINISHED"}
-
-            self.processEvents()
-        return {"PASS_THROUGH"}
-
-    def anyQtWindowsAreOpen(self):
-        return any(w.isVisible() for w in QtWidgets.QApplication.topLevelWidgets())
-
-    def execute(self, context):
-        # create a QApplication if already does not exists
-        self._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
-            sys.argv
-        )
-        self._event_loop = QtCore.QEventLoop()
-
-        # run modal
-        wm = context.window_manager
-        # self._timer = wm.event_timer_add(1 / 120, window=context.window)
-        self._timer = wm.event_timer_add(0.001, window=context.window)
-        context.window_manager.modal_handler_add(self)
-
-        return {"RUNNING_MODAL"}
-
-    def cancel(self, context):
-        """Remove event timer when stopping the operator."""
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
+def _process_qt_events():
+    """Process Qt events via Blender's timer system."""
+    if _qt_app is not None:
+        _qt_app.processEvents()
+        _qt_app.sendPostedEvents(None, 0)
+    return 0.001
 
 
 class TOPBAR_MT_shotgun(Menu):
@@ -180,7 +144,7 @@ def insert_main_menu(menu_class, before_menu_class):
             func=ast.Attribute(
                 value=ast.Name(id="layout", ctx=ast.Load()), attr="menu", ctx=ast.Load()
             ),
-            args=[ast.Str(s=menu_class.__name__)],
+            args=[ast.Constant(value=menu_class.__name__)],
             keywords=[],
         )
     )
@@ -250,7 +214,9 @@ def boostrap():
         sys.path.insert(0, SGTK_MODULE_PATH)
 
     engine_startup_path = os.environ.get("SGTK_BLENDER_ENGINE_STARTUP")
-    engine_startup = imp.load_source("sgtk_blender_engine_startup", engine_startup_path)
+    spec = importlib.util.spec_from_file_location("sgtk_blender_engine_startup", engine_startup_path)
+    engine_startup = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(engine_startup)
 
     # Fire up Toolkit and the environment engine.
     engine_startup.start_toolkit()
@@ -258,23 +224,25 @@ def boostrap():
 
 @persistent
 def startup(dummy):
-    bpy.ops.screen.qt_event_loop()
+    global _qt_app
+    _qt_app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    if not bpy.app.timers.is_registered(_process_qt_events):
+        bpy.app.timers.register(_process_qt_events, persistent=True)
     boostrap()
 
 @persistent
 def error_importing_pyside2(*args):
-    bpy.ops.shotgun.logger(level="ERROR", message=PYSIDE2_MISSING_MESSAGE)
+    bpy.ops.shotgun.logger(level="ERROR", message=PYSIDE_MISSING_MESSAGE)
 
 
 def register():
     bpy.utils.register_class(ShotgunConsoleLog)
 
-    if not PYSIDE2_IMPORTED:
+    if not PYSIDE_IMPORTED:
         # bpy.app.timers.register(error_importing_pyside2, first_interval=5)
         load_factory_startup_post.append(error_importing_pyside2)
         return
 
-    bpy.utils.register_class(QtWindowEventLoop)
     TOPBAR_MT_help = bpy.types.TOPBAR_MT_help
     TOPBAR_MT_editor_menus = insert_main_menu(
         TOPBAR_MT_shotgun, before_menu_class=TOPBAR_MT_help
@@ -292,7 +260,10 @@ def register():
 def unregister():
     bpy.utils.unregister_class(ShotgunConsoleLog)
 
-    if not PYSIDE2_IMPORTED:
+    if not PYSIDE_IMPORTED:
         return
+
+    if bpy.app.timers.is_registered(_process_qt_events):
+        bpy.app.timers.unregister(_process_qt_events)
 
     bpy.utils.unregister_class(TOPBAR_MT_shotgun)
