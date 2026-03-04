@@ -11,6 +11,7 @@
 # ----------------------------------------------------------------------------
 
 
+import ctypes
 import os
 import sys
 import importlib.util
@@ -96,8 +97,11 @@ _qt_app = None
 def _process_qt_events():
     """Process Qt events via Blender's timer system."""
     if _qt_app is not None:
+        # Skip during Windows drag/resize modal loops to prevent deadlock.
+        # GetCapture() is non-NULL whenever a window holds mouse capture (e.g. resize, move).
+        if sys.platform == "win32" and ctypes.windll.user32.GetCapture():
+            return 0.001
         _qt_app.processEvents()
-        _qt_app.sendPostedEvents(None, 0)
     return 0.001
 
 
