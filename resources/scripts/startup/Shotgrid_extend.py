@@ -43,10 +43,12 @@ class SGTKPROPERTIES_ListItem(PropertyGroup):
     """Group of properties representing an item in the list."""
     collectionTypes = [
                         ("ABC", "ABC", ""),
+                        ("USD", "USD", ""),
                         ]
     collectionProfiles = [
-                        ("Geometry", "Geometry", ""),
                         ("Camera", "Camera", ""),
+                        ("StaticGeometry", "Static Geometry", ""),
+                        ("AnimatedGeometry", "Animated Geometry", ""),
                         ]
 
     collection: PointerProperty(
@@ -65,7 +67,7 @@ class SGTKPROPERTIES_ListItem(PropertyGroup):
            name="Profile",
            items=collectionProfiles,
            description="Profile to use for Export",
-           default="Geometry")
+           default="Camera")
 
 class SGTKPROPERTIES_UL_List(UIList):
 
@@ -73,11 +75,13 @@ class SGTKPROPERTIES_UL_List(UIList):
                   active_propname, index):
 
         type_icon = {
-                    'ABC' : 'COLLECTION_COLOR_01',
+                    'ABC': 'COLLECTION_COLOR_01',
+                    'USD': 'COLLECTION_COLOR_04',
         }
         profile_icon = {
-                    'Geometry' : 'MESH_DATA',
-                    'Camera' : 'CAMERA_DATA',
+                    'Camera': 'CAMERA_DATA',
+                    'StaticGeometry': 'MESH_DATA',
+                    'AnimatedGeometry': 'ANIM_DATA',
         }
 
         collection_item = item.collection

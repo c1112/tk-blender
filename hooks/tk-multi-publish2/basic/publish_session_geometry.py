@@ -14,7 +14,6 @@
 import os
 import sgtk
 
-from tank_vendor import six
 from sgtk.util.filesystem import ensure_folder_exists
 
 import bpy
@@ -109,7 +108,7 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
                 "description": "Template path for published work files. Should"
                 "correspond to a template defined in "
                 "templates.yml.",
-            }
+            },
         }
 
         # update the base settings
@@ -156,6 +155,7 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
 
         accepted = True
         publisher = self.parent
+        ftype = item.properties.get('ftype', 'abc')
         if item.properties.multi:
             template_name = settings["Publish Multi Template"].value
         else:
@@ -183,10 +183,16 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         # for use in subsequent methods
         item.properties["publish_template"] = publish_template
 
-        # check that the AbcExport command is available!
-        if not bpy.app.build_options.alembic:
+        # check that the required export capability is available
+        if ftype == 'abc' and not bpy.app.build_options.alembic:
             self.logger.debug(
                 "Item not accepted because alembic export command "
+                "is not available in this version of Blender"
+            )
+            accepted = False
+        elif ftype in ('usdc', 'usda') and not bpy.app.build_options.usd:
+            self.logger.debug(
+                "Item not accepted because USD export command "
                 "is not available in this version of Blender"
             )
             accepted = False
@@ -337,6 +343,27 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
             self.logger.error(error_msg)
             raise Exception(error_msg)
 
+    def usd_publish(self, collection, publish_path, animated):
+        """
+        Runs the publish for USD output.
+        """
+        try:
+            override = get_view3d_operator_context()
+            with bpy.context.temp_override(**override):
+                bpy.ops.wm.usd_export(
+                    filepath=publish_path,
+                    selected_objects_only=True,
+                    export_animation=animated,
+                    export_uvmaps=True,
+                    export_normals=True,
+                    export_mesh_colors=True,
+                    export_materials=True,
+                )
+        except Exception as e:
+            error_msg = "Failed to export USD: %s" % e
+            self.logger.error(error_msg)
+            raise Exception(error_msg)
+
     def publish(self, settings, item):
         """
         Executes the publish logic for the given item and settings.
@@ -362,8 +389,12 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         #select the contents of the collection to run on
         self.select_collection(publish_collection)
 
-        if item.properties['ftype'] == "abc":
+        ftype = item.properties.get('ftype', 'abc')
+        if ftype == "abc":
             self.abc_publish(publish_collection, publish_path, start_frame, end_frame)
+        elif ftype in ("usdc", "usda"):
+            animated = item.properties.get('animated', True)
+            self.usd_publish(publish_collection, publish_path, animated)
 
         # Now that the path has been generated, hand it off to the
         super(BlenderSessionGeometryPublishPlugin, self).publish(settings, item)

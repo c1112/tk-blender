@@ -450,6 +450,10 @@ class BlenderActions(HookBaseClass):
             with bpy.context.temp_override(**context):
                 bpy.ops.wm.alembic_import(filepath=path, as_background_job=False, set_frame_range=False)
 
+        elif extension_name in ("usd", "usdc", "usda"):
+            with bpy.context.temp_override(**context):
+                bpy.ops.wm.usd_import(filepath=path)
+
         elif extension_name in ("dae",):
             bpy.ops.wm.collada_import(context, filepath=path, as_background_job=False)
 

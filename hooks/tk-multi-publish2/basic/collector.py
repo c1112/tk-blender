@@ -94,21 +94,44 @@ class BlenderSessionCollector(HookBaseClass):
         Creates a an item based on the the sgtk_abc_collection in the
         Shotgrid Publish Properties being filled.
         """
-        profiles = { "ABC_Camera": {"publish_type":"Alembic Camera",
-                                    "ftype": "abc",
-                                    "ext": "abc",
-                                    "filter": "camera",
-                                    "item_type": "Camera",
-                                    "icon": "camera.png",
-                                    },
-                     "ABC_Geometry": {"publish_type":"Alembic Cache",
-                                                 "ftype": "abc",
-                                                 "ext": "abc",
-                                                 "filter": "geometry",
-                                                 "item_type": "Geometry",
-                                                 "icon": "geometry.png",
-                                                 },
-                    }
+        profiles = {
+            "ABC_Camera": {
+                "publish_type": "Alembic Camera",
+                "ftype": "abc", "ext": "abc",
+                "filter": "camera", "item_type": "Camera",
+                "icon": "camera.png", "animated": True,
+            },
+            "ABC_StaticGeometry": {
+                "publish_type": "Alembic Cache",
+                "ftype": "abc", "ext": "abc",
+                "filter": "geometry", "item_type": "Geometry",
+                "icon": "geometry.png", "animated": False,
+            },
+            "ABC_AnimatedGeometry": {
+                "publish_type": "Alembic Cache",
+                "ftype": "abc", "ext": "abc",
+                "filter": "geometry", "item_type": "Geometry",
+                "icon": "geometry.png", "animated": True,
+            },
+            "USD_Camera": {
+                "publish_type": "USD Camera",
+                "ftype": "usda", "ext": "usda",
+                "filter": "camera", "item_type": "Camera",
+                "icon": "camera.png", "animated": True,
+            },
+            "USD_StaticGeometry": {
+                "publish_type": "USD Static Geometry",
+                "ftype": "usdc", "ext": "usdc",
+                "filter": "geometry", "item_type": "Geometry",
+                "icon": "geometry.png", "animated": False,
+            },
+            "USD_AnimatedGeometry": {
+                "publish_type": "USD Animated Geometry",
+                "ftype": "usdc", "ext": "usdc",
+                "filter": "geometry", "item_type": "Geometry",
+                "icon": "geometry.png", "animated": True,
+            },
+        }
         #get items from the blender ui widget
         sgtk_aux_exports = bpy.context.scene.sgtk_aux_exports
 
@@ -131,6 +154,7 @@ class BlenderSessionCollector(HookBaseClass):
             multi_item.properties['publish_type'] = profile["publish_type"]
             multi_item.properties['ftype'] = profile["ftype"]
             multi_item.properties['ext'] = profile["ext"]
+            multi_item.properties['animated'] = profile["animated"]
 
     def _collect_primary_abc_collection(self, parent_item):
         """
