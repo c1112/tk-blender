@@ -310,6 +310,10 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
             obj.hide_select = False
             obj.select_set(True)
 
+        # export operators require an active object
+        if collection.all_objects:
+            bpy.context.view_layer.objects.active = list(collection.all_objects)[0]
+
         return
 
     def clear_selection(self):
@@ -330,9 +334,7 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
                 bpy.ops.wm.alembic_export(
                     filepath=publish_path,
                     selected=True,
-                    visible_objects_only=False,
                     uvs=True,
-                    vcolors=True,
                     face_sets=True,
                     start=start_frame,
                     end=end_frame,
@@ -384,16 +386,20 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         publish_folder = os.path.dirname(publish_path)
         self.parent.ensure_folder_exists(publish_folder)
 
-        start_frame, end_frame = _find_scene_animation_range()
+        animated = item.properties.get('animated', True)
+        ftype = item.properties.get('ftype', 'abc')
 
-        #select the contents of the collection to run on
         self.select_collection(publish_collection)
 
-        ftype = item.properties.get('ftype', 'abc')
         if ftype == "abc":
+            if animated:
+                start_frame = bpy.context.scene.frame_start
+                end_frame = bpy.context.scene.frame_end
+            else:
+                frame = bpy.context.scene.frame_current
+                start_frame, end_frame = frame, frame
             self.abc_publish(publish_collection, publish_path, start_frame, end_frame)
         elif ftype in ("usdc", "usda"):
-            animated = item.properties.get('animated', True)
             self.usd_publish(publish_collection, publish_path, animated)
 
         # Now that the path has been generated, hand it off to the
