@@ -93,10 +93,6 @@ class BlenderLauncher(SoftwareLauncher):
 
         required_env["BLENDER_USER_SCRIPTS"] = scripts_path
 
-        if not os.environ.get("PYSIDE2_PYTHONPATH"):
-            pyside2_python_path = os.path.join(self.disk_location, "python", "ext")
-            required_env["PYSIDE2_PYTHONPATH"] = pyside2_python_path
-
         # Prepare the launch environment with variables required by the
         # classic bootstrap approach.
         self.logger.debug(

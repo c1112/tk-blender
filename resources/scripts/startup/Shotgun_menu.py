@@ -23,16 +23,7 @@ import bpy
 from bpy.types import Header, Menu, Panel, Operator
 from bpy.app.handlers import load_factory_startup_post, persistent, load_post
 
-import site
-
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-
-ext_libs = os.environ.get("PYSIDE2_PYTHONPATH")
-
-if ext_libs and os.path.exists(ext_libs):
-    if ext_libs not in sys.path:
-        print("Added path: %s" % ext_libs)
-        site.addsitedir(ext_libs)
 
 bl_info = {
     "name": "Shotgun Bridge Plugin",
@@ -41,7 +32,7 @@ bl_info = {
     "license": "GPL",
     "deps": "",
     "version": (1, 0, 0),
-    "blender": (2, 82, 0),
+    "blender": (4, 0, 0),
     "location": "Shotgun",
     "warning": "",
     "wiki_url": "https://github.com/diegogarciahuerta/tk-blender/releases",
@@ -55,9 +46,8 @@ bl_info = {
 PYSIDE_MISSING_MESSAGE = (
     "\n"
     + "-" * 80
-    + "\nCould not import PySide2 or PySide6 as a Python module. Shotgun menu will not be available."
-    + "\n\nPlease check the engine documentation for more information:"
-    + "\nhttps://github.com/diegogarciahuerta/tk-blender/edit/master/README.md\n"
+    + "\nCould not import PySide6 as a Python module. Shotgun menu will not be available."
+    + "\nPlease install PySide6 into Blender's Python: blender_python -m pip install PySide6\n"
     + "-" * 80
 )
 
@@ -66,12 +56,8 @@ try:
 
     PYSIDE_IMPORTED = True
 except ImportError:
-    try:
-        from PySide2 import QtWidgets, QtCore
-
-        PYSIDE_IMPORTED = True
-    except ImportError:
-        PYSIDE_IMPORTED = False
+    PYSIDE_IMPORTED = False
+    print(PYSIDE_MISSING_MESSAGE)
 
 
 class ShotgunConsoleLog(bpy.types.Operator):
