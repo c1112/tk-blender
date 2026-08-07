@@ -161,10 +161,11 @@ def insert_main_menu(menu_class, before_menu_class):
 
     # compile and execute the code
     code_ast_compiled = compile(code_ast, filename=__file__, mode="exec")
-    exec(code_ast_compiled)
+    exec_ns = {**globals()}
+    exec(code_ast_compiled, exec_ns)
 
-    # the newly create class is now within the local variables
-    return locals()["TOPBAR_MT_editor_menus"]
+    # the newly created class is now within the exec namespace
+    return exec_ns["TOPBAR_MT_editor_menus"]
 
 
 # class TOPBAR_MT_editor_menus(Menu):
