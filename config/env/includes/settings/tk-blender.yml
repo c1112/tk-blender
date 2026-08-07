@@ -70,7 +70,7 @@ settings.tk-blender.project:
   menu_favourites:
   - {app_instance: tk-multi-workfiles2, name: File Open...}
   debug_logging: true
-  compatibility_dialog_min_version: 3
+  compatibility_dialog_min_version: 6
   automatic_context_switch: true
   location: "@engines.tk-blender.location"
 

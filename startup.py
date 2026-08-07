@@ -64,7 +64,7 @@ class BlenderLauncher(SoftwareLauncher):
         """
         The minimum software version that is supported by the launcher.
         """
-        return "2.8"
+        return "4.5"
 
     def prepare_launch(self, exec_path, args, file_to_open=None):
         """
@@ -92,10 +92,6 @@ class BlenderLauncher(SoftwareLauncher):
             args += "-P %s " % (startup_path)
 
         required_env["BLENDER_USER_SCRIPTS"] = scripts_path
-
-        if not os.environ.get("PYSIDE2_PYTHONPATH"):
-            pyside2_python_path = os.path.join(self.disk_location, "python", "ext")
-            required_env["PYSIDE2_PYTHONPATH"] = pyside2_python_path
 
         # Prepare the launch environment with variables required by the
         # classic bootstrap approach.

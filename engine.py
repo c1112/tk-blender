@@ -44,10 +44,12 @@ APPLICATION_NAME = "Blender"
 # when Blender software version is above the tested one.
 SHOW_COMP_DLG = "SGTK_COMPATIBILITY_DIALOG_SHOWN"
 
-# this is the absolute minimum Blender version for the engine to work. Actually
-# the one the engine was developed originally under, so change it at your
-# own risk if needed.
-MIN_COMPATIBILITY_VERSION = 3.0
+# Minimum Blender version required for the engine to run.
+MIN_COMPATIBILITY_VERSION = 4.5
+
+# Maximum Blender version that has been fully tested. Versions above this
+# will show a compatibility warning.
+MAX_TESTED_VERSION = 5.2
 
 
 # Although the engine has logging already, this logger is needed for logging
@@ -353,7 +355,7 @@ class BlenderEngine(Engine):
             self.show_error(msg)
             raise tank.TankError(msg)
 
-        if app_ver > MIN_COMPATIBILITY_VERSION:
+        if app_ver > MAX_TESTED_VERSION:
             # show a warning that this version of Blender isn't yet fully tested
             # with Shotgun:
             msg = (
