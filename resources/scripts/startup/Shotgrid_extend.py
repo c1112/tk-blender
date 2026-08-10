@@ -184,9 +184,7 @@ class SGTKPROPERTIES_PT_publishing(SGTKPropertiesPanel, Panel):
        layout.use_property_split = True
        layout.use_property_decorate = False
        row = layout.row()
-       row.prop_search(context.scene, "sgtk_link_collection", data, "collections", text="Tag Link Collection")
-       row = layout.row()
-       row.prop_search(context.scene, "sgtk_link_collection", data, "collections", text="Tag Append Collection")
+       row.prop_search(context.scene, "sgtk_link_collection", data, "collections", text="Blend Publish Collection")
        row = layout.row()
        row.prop_search(context.scene, "sgtk_abc_collection", data, "collections", text="Alembic Publish Collection")
 
@@ -206,17 +204,11 @@ classes = (
     SGTKPROPERTIES_PT_aux_exports,
 )
 
-def pp_draw_menu(self, context):
-    layout = self.layout
-    layout.operator('Scene.sgtk_link_collection')
-
 def pp_register():
     for cls in classes:
         register_class(cls)
-    OUTLINER_MT_collection.append(pp_draw_menu)
     #add all the scene varibles that store the information inside the blendfile
     Scene.sgtk_link_collection = PointerProperty(type=Collection)
-    Scene.sgtk_append_collection = PointerProperty(type=Collection)
     Scene.sgtk_abc_collection = PointerProperty(type=Collection)
     Scene.sgtk_aux_exports = CollectionProperty(type=SGTKPROPERTIES_ListItem)
     Scene.sgtk_aux_exports_index = IntProperty(name = "Index for sgtk_aux_exports", default = 0)
