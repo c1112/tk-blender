@@ -286,6 +286,20 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         # run the base class validation
         return super(BlenderSessionGeometryPublishPlugin, self).validate(settings, item)
 
+    def _find_layer_collection(self, layer_collection, collection):
+        """
+        Recursively search the view layer's layer collection tree for the
+        LayerCollection matching the given Collection, so nested collections
+        (not direct children of the scene's master collection) can be found.
+        """
+        if layer_collection.collection == collection:
+            return layer_collection
+        for child in layer_collection.children:
+            found = self._find_layer_collection(child, collection)
+            if found:
+                return found
+        return None
+
     def select_collection(self, collection):
         """
         selects the contents of the collection for export
@@ -295,7 +309,11 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         self.clear_selection()
 
         #get the viewlayer object of the collection
-        vl_collection = bpy.context.view_layer.layer_collection.children[collection.name]
+        vl_collection = self._find_layer_collection(bpy.context.view_layer.layer_collection, collection)
+        if vl_collection is None:
+            error_msg = "Could not find collection '%s' in the current view layer." % collection.name
+            self.logger.error(error_msg)
+            raise Exception(error_msg)
 
         #if the collection is currently exluded then unexclude it
         if vl_collection.exclude == True:
