@@ -136,6 +136,8 @@ class BlenderSessionCollector(HookBaseClass):
         sgtk_aux_exports = bpy.context.scene.sgtk_aux_exports
 
         for export in sgtk_aux_exports:
+            if not export.enabled:
+                continue
             #select the correct profile profile
             profile = profiles["%s_%s" % (export.type, export.profile)]
 

@@ -27,7 +27,7 @@ bl_info = {
 }
 
 from bpy.types import Panel, Scene, Collection, UIList, PropertyGroup, Operator, OUTLINER_MT_collection
-from bpy.props import PointerProperty, EnumProperty, CollectionProperty, IntProperty
+from bpy.props import PointerProperty, EnumProperty, CollectionProperty, IntProperty, BoolProperty
 from bpy.utils import register_class, unregister_class
 from bpy.app.handlers import persistent
 from bpy import data
@@ -69,6 +69,11 @@ class SGTKPROPERTIES_ListItem(PropertyGroup):
            description="Profile to use for Export",
            default="Camera")
 
+    enabled: BoolProperty(
+           name="Publish",
+           description="Include this item when publishing",
+           default=True)
+
 class SGTKPROPERTIES_UL_List(UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data,
@@ -92,6 +97,7 @@ class SGTKPROPERTIES_UL_List(UIList):
 
         #To support all 3 different kinds of layouts
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
+                layout.prop(item, "enabled", text="")
                 layout.label(text=collection_name, icon = 'OUTLINER_COLLECTION')
                 layout.label(text=item.type, icon=type_icon[item.type])
                 layout.label(text=item.profile, icon=profile_icon[item.profile])
