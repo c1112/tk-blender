@@ -299,6 +299,10 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         """
         if layer_collection.exclude:
             layer_collection.exclude = False
+            # An excluded layer collection has no .children until the view
+            # layer is rebuilt; force that so the recursion below can reach
+            # nested collections that were previously excluded.
+            bpy.context.view_layer.update()
         if layer_collection.collection.hide_select:
             layer_collection.collection.hide_select = False
         for child in layer_collection.children:
@@ -322,14 +326,24 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         #recursively unexclude/unhide the collection and any nested child collections
         self._unhide_layer_collection_tree(vl_collection)
 
+        # toggling exclude above invalidates the view layer's object lists;
+        # rebuild them before reading all_objects so it doesn't return stale
+        # (None) entries
+        bpy.context.view_layer.update()
+
         #select all the objects in the collection (recursively includes child collections)
-        for obj in collection.all_objects:
-            obj.hide_select = False
+        selectable = [obj for obj in collection.all_objects if obj is not None]
+        for obj in selectable:
+            try:
+                # hide_select is read-only on linked library data
+                obj.hide_select = False
+            except AttributeError:
+                pass
             obj.select_set(True)
 
         # export operators require an active object
-        if collection.all_objects:
-            bpy.context.view_layer.objects.active = list(collection.all_objects)[0]
+        if selectable:
+            bpy.context.view_layer.objects.active = selectable[0]
 
         return
 
