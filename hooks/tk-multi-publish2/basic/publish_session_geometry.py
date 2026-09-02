@@ -274,15 +274,6 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
         if "version" in work_fields:
             item.properties["publish_version"] = work_fields["version"]
 
-        # check that collection to be publish does not contain collections
-        if len(item.properties['collection'].children) > 0:
-            error_msg = (
-                "Validation failed because there is no support at this time "
-                "for publish collections to contain child collections "
-            )
-            self.logger.error(error_msg)
-            raise Exception(error_msg)
-
         # run the base class validation
         return super(BlenderSessionGeometryPublishPlugin, self).validate(settings, item)
 
@@ -300,6 +291,19 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
                 return found
         return None
 
+    def _unhide_layer_collection_tree(self, layer_collection):
+        """
+        Recursively ensure a layer collection and all of its nested child
+        collections are un-excluded and selectable, so objects anywhere in
+        the tree can be selected for export.
+        """
+        if layer_collection.exclude:
+            layer_collection.exclude = False
+        if layer_collection.collection.hide_select:
+            layer_collection.collection.hide_select = False
+        for child in layer_collection.children:
+            self._unhide_layer_collection_tree(child)
+
     def select_collection(self, collection):
         """
         selects the contents of the collection for export
@@ -315,15 +319,10 @@ class BlenderSessionGeometryPublishPlugin(HookBaseClass):
             self.logger.error(error_msg)
             raise Exception(error_msg)
 
-        #if the collection is currently exluded then unexclude it
-        if vl_collection.exclude == True:
-            vl_collection.exclude = False
+        #recursively unexclude/unhide the collection and any nested child collections
+        self._unhide_layer_collection_tree(vl_collection)
 
-        #if the collection is currently hidden fromt he viewport unhide it
-        if collection.hide_select == True:
-            collection.hide_select = False
-
-        #select all the objects in the collection
+        #select all the objects in the collection (recursively includes child collections)
         for obj in collection.all_objects:
             obj.hide_select = False
             obj.select_set(True)
