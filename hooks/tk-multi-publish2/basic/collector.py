@@ -141,8 +141,14 @@ class BlenderSessionCollector(HookBaseClass):
             #select the correct profile profile
             profile = profiles["%s_%s" % (export.type, export.profile)]
 
+            # Collection names often contain spaces, which are invalid for file
+            # paths and undesirable in ShotGrid publish names. Replace them with
+            # dashes for the publish item name (also used as the abcset_name
+            # template field downstream in publish_session_geometry.py).
+            publish_name = export.collection.name.replace(" ", "-")
+
             multi_item = parent_item.create_item(
-                "blender.%s.multi" % profile['filter'], profile["item_type"], export.collection.name
+                "blender.%s.multi" % profile['filter'], profile["item_type"], publish_name
             )
 
             # get the icon path to display for this item
